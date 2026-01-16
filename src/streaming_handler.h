@@ -44,7 +44,7 @@ public:
   bool init(size_t rowSizeBytes, size_t rowCount);
 
   // Initialize for direct streaming mode with display format
-  bool initDirect(uint16_t displayWidth, size_t rowCount, PixelPacker::DisplayFormat format);
+  bool initDirect(uint16_t displayWidth, size_t rowCount);
 
   size_t writeRow(size_t rowIndex, const uint8_t *data, size_t length);
 
@@ -65,7 +65,7 @@ public:
   uint8_t *getColorRowDataMutable(size_t rowIndex);
 
   // Direct pixel packing methods
-  void setPixel(size_t rowIndex, uint16_t x, uint16_t color);
+  void setPixel(size_t rowIndex, uint16_t x, Color color);
   void setPixelGrey(size_t rowIndex, uint16_t x, uint8_t grey);
 
   // Row management
@@ -79,7 +79,6 @@ public:
 
   bool isInitialized() const { return m_initialized; }
   bool isDirectMode() const { return m_directMode; }
-  PixelPacker::DisplayFormat getFormat() const { return m_format; }
   uint16_t getDisplayWidth() const { return m_displayWidth; }
 
 private:
@@ -90,7 +89,6 @@ private:
   size_t m_rowSize;
   size_t m_rowCount;
   uint16_t m_displayWidth;
-  PixelPacker::DisplayFormat m_format;
   bool m_initialized;
   bool m_directMode;
 };

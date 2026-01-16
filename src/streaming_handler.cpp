@@ -15,7 +15,6 @@ RowStreamBuffer::RowStreamBuffer()
     : m_rowSize(0),
       m_rowCount(0),
       m_displayWidth(0),
-      m_format(PixelPacker::DisplayFormat::BW),
       m_initialized(false),
       m_directMode(false)
 {
@@ -129,7 +128,7 @@ bool RowStreamBuffer::init(size_t rowSizeBytes, size_t rowCount)
   return false;
 }
 
-bool RowStreamBuffer::initDirect(uint16_t displayWidth, size_t rowCount, PixelPacker::DisplayFormat format)
+bool RowStreamBuffer::initDirect(uint16_t displayWidth, size_t rowCount)
 {
   if (m_initialized)
   {
@@ -137,9 +136,8 @@ bool RowStreamBuffer::initDirect(uint16_t displayWidth, size_t rowCount, PixelPa
     return true;
   }
 
-  m_format = format;
   m_displayWidth = displayWidth;
-  m_rowSize = PixelPacker::getRowBufferSize(displayWidth, format);
+  m_rowSize = PixelPacker::getRowBufferSize(displayWidth);
 
   if (m_rowSize == 0 || m_rowSize > MAX_ROW_SIZE)
   {
@@ -154,8 +152,7 @@ bool RowStreamBuffer::initDirect(uint16_t displayWidth, size_t rowCount, PixelPa
     return false;
   }
 
-  bool needs3CColorBuffer = (format == PixelPacker::DisplayFormat::COLOR_3C);
-  size_t buffersNeeded = needs3CColorBuffer ? 2 : 1;
+  size_t buffersNeeded = 1;
 
   // Check available heap and dynamically adjust row count if needed
   // IMPORTANT: Use largest contiguous block, not total free heap, to avoid fragmentation issues
@@ -226,11 +223,6 @@ bool RowStreamBuffer::initDirect(uint16_t displayWidth, size_t rowCount, PixelPa
       m_rowWritePos.shrink_to_fit();
       m_rowPixelCount.clear();
       m_rowPixelCount.shrink_to_fit();
-      if (needs3CColorBuffer)
-      {
-        m_colorBuffer.clear();
-        m_colorBuffer.shrink_to_fit();
-      }
 
       // Reserve first to ensure single allocation, then resize
       m_buffer.reserve(totalSize);
@@ -240,13 +232,6 @@ bool RowStreamBuffer::initDirect(uint16_t displayWidth, size_t rowCount, PixelPa
       m_rowPixelCount.reserve(tryRowCount);
       m_rowPixelCount.resize(tryRowCount, 0);
       m_rowCount = tryRowCount;
-
-      // Allocate color buffer for 3C displays
-      if (needs3CColorBuffer)
-      {
-        m_colorBuffer.reserve(totalSize);
-        m_colorBuffer.resize(totalSize);
-      }
 
       // Initialize buffers to white
       for (size_t i = 0; i < tryRowCount; i++)
@@ -266,14 +251,7 @@ bool RowStreamBuffer::initDirect(uint16_t displayWidth, size_t rowCount, PixelPa
       else
       {
         Logger::log<Logger::Level::DEBUG, Logger::Topic::STREAM>(
-          "Direct mode initialized: {}x{} format={}, {} bytes/row × {} rows\n", displayWidth, tryRowCount,
-          static_cast<int>(format), m_rowSize, tryRowCount);
-      }
-      if (needs3CColorBuffer)
-      {
-        size_t dualBufferTotal = totalSize * 2;
-        Logger::log<Logger::Level::DEBUG, Logger::Topic::STREAM>(
-          "3C mode: dual buffers allocated (black + color), total {} bytes\n", dualBufferTotal);
+          "Direct mode initialized: {}x{}, {} bytes/row × {} rows\n", displayWidth, tryRowCount, m_rowSize, tryRowCount);
       }
       return true;
     }
@@ -370,7 +348,7 @@ uint8_t *RowStreamBuffer::getColorRowDataMutable(size_t rowIndex)
   return m_colorBuffer.data() + rowOffset;
 }
 
-void RowStreamBuffer::setPixel(size_t rowIndex, uint16_t x, uint16_t color)
+void RowStreamBuffer::setPixel(size_t rowIndex, uint16_t x, Color color)
 {
   if (!m_initialized || !m_directMode || rowIndex >= m_rowCount || x >= m_displayWidth)
     return;
@@ -378,34 +356,7 @@ void RowStreamBuffer::setPixel(size_t rowIndex, uint16_t x, uint16_t color)
   size_t rowOffset = rowIndex * m_rowSize;
   uint8_t *rowData = m_buffer.data() + rowOffset;
 
-  switch (m_format)
-  {
-    case PixelPacker::DisplayFormat::BW:
-      PixelPacker::packPixelBW(rowData, x, color == 0x0000); // GxEPD_BLACK
-      break;
-
-    case PixelPacker::DisplayFormat::GRAYSCALE:
       PixelPacker::packPixel4G(rowData, x, PixelPacker::gxepdToGrey(color));
-      break;
-
-    case PixelPacker::DisplayFormat::COLOR_3C:
-    {
-      uint8_t *colorData = m_colorBuffer.data() + rowOffset;
-      PixelPacker::packPixel3C(rowData, colorData, x, color);
-    }
-    break;
-
-    case PixelPacker::DisplayFormat::COLOR_7C:
-      PixelPacker::packPixel7C(rowData, x, PixelPacker::gxepdTo7CColor(color));
-      break;
-
-    case PixelPacker::DisplayFormat::COLOR_4C:
-      PixelPacker::packPixel4C(rowData, x, PixelPacker::gxepdTo4CColor(color));
-      break;
-
-    default:
-      break;
-  }
 
   incrementRowPixelCount(rowIndex);
 }
@@ -418,11 +369,8 @@ void RowStreamBuffer::setPixelGrey(size_t rowIndex, uint16_t x, uint8_t grey)
   size_t rowOffset = rowIndex * m_rowSize;
   uint8_t *rowData = m_buffer.data() + rowOffset;
 
-  if (m_format == PixelPacker::DisplayFormat::GRAYSCALE)
     PixelPacker::packPixel4G(rowData, x, grey);
-  else if (m_format == PixelPacker::DisplayFormat::BW)
-    PixelPacker::packPixelBW(rowData, x, grey < 128);
-
+  
   incrementRowPixelCount(rowIndex);
 }
 
@@ -434,14 +382,9 @@ void RowStreamBuffer::clearRow(size_t rowIndex)
   size_t rowOffset = rowIndex * m_rowSize;
   uint8_t *rowData = m_buffer.data() + rowOffset;
 
-  PixelPacker::initRowBuffer(rowData, m_rowSize, m_format);
+  PixelPacker::initRowBuffer(rowData, m_rowSize);
 
-  if (m_format == PixelPacker::DisplayFormat::COLOR_3C && !m_colorBuffer.empty())
-  {
-    uint8_t *colorData = m_colorBuffer.data() + rowOffset;
-    PixelPacker::initRowBuffer(colorData, m_rowSize, m_format);
-  }
-
+  
   m_rowPixelCount[rowIndex] = 0;
 }
 
@@ -496,8 +439,6 @@ bool StreamingManager::initDirect(uint16_t displayWidth, size_t rowCount)
     return true;
   }
 
-  PixelPacker::DisplayFormat format = PixelPacker::getDisplayFormat();
-
   if (!PixelPacker::supportsDirectStreaming())
   {
     Logger::log<Logger::Level::ERROR, Logger::Topic::STREAM>("Direct streaming not supported for this display type\n");
@@ -505,7 +446,7 @@ bool StreamingManager::initDirect(uint16_t displayWidth, size_t rowCount)
   }
 
   m_buffer.reset(new RowStreamBuffer());
-  if (!m_buffer->initDirect(displayWidth, rowCount, format))
+  if (!m_buffer->initDirect(displayWidth, rowCount))
   {
     Logger::log<Logger::Level::ERROR, Logger::Topic::STREAM>("Failed to initialize direct row buffer\n");
     m_buffer.reset();

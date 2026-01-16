@@ -1,44 +1,17 @@
 #include "pixel_packer.h"
+#include <display.h>
 
 namespace PixelPacker
 {
 
-size_t getRowBufferSize(uint16_t width, DisplayFormat format)
+size_t getRowBufferSize(uint16_t width)
 {
-  switch (format)
-  {
-    case DisplayFormat::BW:
-      return (width + 7) / 8; // 1bpp: 8 pixels per byte
-    case DisplayFormat::GRAYSCALE:
-      return (width + 3) / 4; // 2bpp: 4 pixels per byte
-    case DisplayFormat::COLOR_3C:
-      return (width + 7) / 8; // 1bpp per plane (need 2 buffers)
-    case DisplayFormat::COLOR_4C:
-      return (width + 3) / 4; // 2bpp: 4 pixels per byte
-    case DisplayFormat::COLOR_7C:
-      return (width + 1) / 2; // 4bpp: 2 pixels per byte
-    default:
-      return (width + 7) / 8;
-  }
+  return (width + 1) / 2; // 4bpp: 2 pixels per byte
 }
 
-uint8_t getBitsPerPixel(DisplayFormat format)
+uint8_t getBitsPerPixel()
 {
-  switch (format)
-  {
-    case DisplayFormat::BW:
-      return 1;
-    case DisplayFormat::GRAYSCALE:
-      return 2;
-    case DisplayFormat::COLOR_3C:
-      return 1; // Per plane
-    case DisplayFormat::COLOR_4C:
-      return 2;
-    case DisplayFormat::COLOR_7C:
-      return 4;
-    default:
-      return 1;
-  }
+  return 4; // 4 bits per pixel
 }
 
 void packPixelBW(uint8_t *buffer, uint16_t x, bool isBlack)
@@ -156,83 +129,27 @@ void convertGrayscaleToBW(const uint8_t *src2bpp, uint8_t *dst1bpp, uint16_t wid
   }
 }
 
-uint8_t gxepdTo4CColor(uint16_t color)
-{
-  switch (color)
-  {
-    case static_cast<uint16_t>(GxEPDColor::BLACK):
-      return 0;
-    case static_cast<uint16_t>(GxEPDColor::YELLOW):
-      return 2;
-    case static_cast<uint16_t>(GxEPDColor::RED):
-      return 3;
-    case static_cast<uint16_t>(GxEPDColor::WHITE):
-    default:
-      return 1;
-  }
-}
 
-uint8_t gxepdTo7CColor(uint16_t color)
+uint8_t gxepdToGrey(Color color)
 {
   switch (color)
   {
-    case static_cast<uint16_t>(GxEPDColor::BLACK):
-      return 0;
-    case static_cast<uint16_t>(GxEPDColor::WHITE):
-      return 1;
-    case static_cast<uint16_t>(GxEPDColor::GREEN):
-      return 2;
-    case static_cast<uint16_t>(GxEPDColor::BLUE):
-      return 3;
-    case static_cast<uint16_t>(GxEPDColor::RED):
-      return 4;
-    case static_cast<uint16_t>(GxEPDColor::YELLOW):
-      return 5;
-    case static_cast<uint16_t>(GxEPDColor::ORANGE):
-      return 6;
-    default:
-      return 1; // Default to white
-  }
-}
-
-uint8_t gxepdToGrey(uint16_t color)
-{
-  switch (color)
-  {
-    case static_cast<uint16_t>(GxEPDColor::BLACK):
+    case Color::Black:
       return 0x00; // Black (2-bit: 00)
-    case static_cast<uint16_t>(GxEPDColor::DARKGREY):
+    case Color::Gray04:
       return 0x40; // Dark grey (2-bit: 01)
-    case static_cast<uint16_t>(GxEPDColor::LIGHTGREY):
+    case Color::Gray09:
       return 0x80; // Light grey (2-bit: 10)
-    case static_cast<uint16_t>(GxEPDColor::WHITE):
+    case Color::White:
       return 0xC0; // White (2-bit: 11)
     default:
       return 0xC0; // Default to white
   }
 }
 
-void initRowBuffer(uint8_t *buffer, size_t size, DisplayFormat format)
+void initRowBuffer(uint8_t *buffer, size_t size)
 {
-  switch (format)
-  {
-    case DisplayFormat::BW:
-    case DisplayFormat::COLOR_3C:
-      memset(buffer, WHITE_BYTE_1BPP, size);
-      break;
-    case DisplayFormat::GRAYSCALE:
-      memset(buffer, WHITE_BYTE_2BPP, size);
-      break;
-    case DisplayFormat::COLOR_7C:
       memset(buffer, WHITE_BYTE_4BPP, size);
-      break;
-    case DisplayFormat::COLOR_4C:
-      memset(buffer, WHITE_BYTE_4C, size);
-      break;
-    default:
-      memset(buffer, WHITE_BYTE_1BPP, size);
-      break;
-  }
 }
 
 } // namespace PixelPacker

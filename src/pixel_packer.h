@@ -9,16 +9,6 @@
 namespace PixelPacker
 {
 
-// Display format types for streaming, values match CT_* defines from display.h
-enum class DisplayFormat : uint8_t
-{
-  BW = CT_BW,               // 1bpp black/white
-  GRAYSCALE = CT_GRAYSCALE, // 2bpp 4-level grayscale
-  COLOR_3C = CT_3C,         // Dual 1bpp planes (black + red/yellow)
-  COLOR_4C = CT_4C,         // 2bpp native
-  COLOR_7C = CT_7C          // 4bpp 7-color
-};
-
 // Color values in RGB565 format
 enum class GxEPDColor : uint16_t
 {
@@ -39,14 +29,12 @@ constexpr uint8_t WHITE_BYTE_2BPP = 0xFF;
 constexpr uint8_t WHITE_BYTE_4BPP = 0x11;
 constexpr uint8_t WHITE_BYTE_4C = 0x55;
 
-inline constexpr DisplayFormat getDisplayFormat() { return static_cast<DisplayFormat>(COLOR_ID); }
-
 // Check if direct streaming is supported for the current display format
 // All display types now support the setPaged()/writeNative()/refresh() API
 inline constexpr bool supportsDirectStreaming() { return true; }
 
-size_t getRowBufferSize(uint16_t width, DisplayFormat format);
-uint8_t getBitsPerPixel(DisplayFormat format);
+size_t getRowBufferSize(uint16_t width);
+uint8_t getBitsPerPixel();
 
 void packPixelBW(uint8_t *buffer, uint16_t x, bool isBlack);
 void packPixel4G(uint8_t *buffer, uint16_t x, uint8_t grey);
@@ -55,11 +43,11 @@ void packPixel4C(uint8_t *buffer, uint16_t x, uint8_t color4);
 void packPixel7C(uint8_t *buffer, uint16_t x, uint8_t color7);
 
 void convertGrayscaleToBW(const uint8_t *src2bpp, uint8_t *dst1bpp, uint16_t width, uint16_t rowCount);
-uint8_t gxepdToGrey(uint16_t color);
+uint8_t gxepdToGrey(Color color);
 uint8_t gxepdTo4CColor(uint16_t color);
 uint8_t gxepdTo7CColor(uint16_t color);
 
-void initRowBuffer(uint8_t *buffer, size_t size, DisplayFormat format);
+void initRowBuffer(uint8_t *buffer, size_t size);
 
 } // namespace PixelPacker
 

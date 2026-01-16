@@ -24,18 +24,7 @@
 #include "state_manager.h"
 #include "streaming_handler.h"
 
-#ifdef TYPE_BW
-  #include <GxEPD2_BW.h>
-#elif defined TYPE_3C
-  #include <GxEPD2_3C.h>
-#elif defined TYPE_4C
-  #include <GxEPD2_4C.h>
-#elif defined TYPE_GRAYSCALE
-  #include "GxEPD2_4G_4G.h"
-  #include "GxEPD2_4G_BW.h"
-#elif defined TYPE_7C
-  #include <GxEPD2_7C.h>
-#endif
+#include <epd_driver.h>
 
 #include <pngle.h>
 
@@ -79,46 +68,36 @@ static void printReadError(uint32_t bytesRead)
   Logger::log<Logger::Level::ERROR, Logger::Topic::HTTP>("Client got disconnected after bytes: {}\n", bytesRead);
 }
 
-static uint16_t getSecondColor()
+static Color getSecondColor()
 {
-#if (defined TYPE_BW) || (defined TYPE_GRAYSCALE)
-  return GxEPD_LIGHTGREY;
-#else
-  return GxEPD_RED;
-#endif
+  return Color::Gray05;
+}
+  
+static Color getThirdColor()
+{
+  return Color::Gray10;
 }
 
-static uint16_t getThirdColor()
-{
-#if (defined TYPE_BW) || (defined TYPE_GRAYSCALE)
-  return GxEPD_DARKGREY;
-#else
-  return GxEPD_YELLOW;
-#endif
-}
-
-static uint16_t mapColorValue(uint8_t pixelColor, uint16_t color2, uint16_t color3)
+static Color mapColorValue(uint8_t pixelColor, Color color2, Color color3)
 {
   switch (pixelColor)
   {
     case 0x0:
-      return GxEPD_WHITE;
+      return Color::White;
     case 0x1:
-      return GxEPD_BLACK;
+      return Color::Black;
     case 0x2:
       return color2;
     case 0x3:
       return color3;
-#ifdef TYPE_7C
     case 0x4:
-      return GxEPD_GREEN;
+      return Color::Gray03;
     case 0x5:
-      return GxEPD_BLUE;
+      return Color::Gray12;
     case 0x6:
-      return GxEPD_ORANGE;
-#endif
+      return Color::Gray06;
     default:
-      return GxEPD_WHITE;
+      return Color::White;
   }
 }
 
@@ -161,7 +140,6 @@ static void flushCompletedRows()
   const uint8_t *blackData = g_directCtx.buffer->getRowData(0);
   const uint8_t *colorData = g_directCtx.buffer->getColorRowData(0);
 
-  // Write rows to display
   Display::writeRowsDirect(g_directCtx.firstRowInBuffer, rowsToFlush, blackData, colorData);
 
   Logger::log<Logger::Level::DEBUG, Logger::Topic::STREAM>("Flushed {} rows starting at y={}\n", rowsToFlush,
@@ -178,7 +156,7 @@ static void flushCompletedRows()
 }
 
 // Write a single pixel in direct streaming mode
-static void directStreamPixel(uint16_t x, uint16_t y, uint16_t color)
+static void directStreamPixel(int x, int y, Color color)
 {
   if (!g_directCtx.initialized || !g_directCtx.buffer)
     return;
@@ -260,61 +238,49 @@ static void finalizeDirectStream()
 ///////////////////////////////////////////////
 
 // Convert RGBA to display color (unified color mapping for all image formats)
-static uint16_t rgbaToDisplayColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
+static Color rgbaToDisplayColor(uint8_t r, uint8_t g, uint8_t b, uint8_t a)
 {
   if (a == 0)
-    return GxEPD_WHITE; // Transparent = white
+    return Color::White; // Transparent = white
 
-#if defined(TYPE_BW)
-  uint8_t gray = (r * 77 + g * 150 + b * 29) >> 8;
-  return (gray <= 160) ? GxEPD_BLACK : GxEPD_WHITE;
-
-#elif defined(TYPE_3C)
-  if (r >= 128 && r > (g + 80) && r > (b + 80))
-    return GxEPD_RED;
-  uint8_t gray = (r * 77 + g * 150 + b * 29) >> 8;
-  return (gray <= 160) ? GxEPD_BLACK : GxEPD_WHITE;
-
-#elif defined(TYPE_4C)
-  if (r > 128 && g > 128 && b < 80)
-    return GxEPD_YELLOW;
-  if (r > 128 && r > (g + 80) && r > (b + 80))
-    return GxEPD_RED;
-  uint8_t gray = (r * 77 + g * 150 + b * 29) >> 8;
-  return (gray <= 160) ? GxEPD_BLACK : GxEPD_WHITE;
-
-#elif defined(TYPE_7C)
-  if (r > 200 && g > 80 && g < 180 && b < 80)
-    return GxEPD_ORANGE;
-  if (r > 128 && r > (g + 80) && r > (b + 80))
-    return GxEPD_RED;
-  if (r > 128 && g > 128 && b < 80)
-    return GxEPD_YELLOW;
-  if (g > 128 && g > (r + 80) && g > (b + 80))
-    return GxEPD_GREEN;
-  if (b > 128 && b > (r + 80) && b > (g + 80))
-    return GxEPD_BLUE;
-  uint8_t gray = (r * 77 + g * 150 + b * 29) >> 8;
-  return (gray <= 160) ? GxEPD_BLACK : GxEPD_WHITE;
-
-#elif defined(TYPE_GRAYSCALE)
   uint8_t gray = (r + g + b) / 3;
-  if (gray > 160)
-    return GxEPD_WHITE;
-  if (gray > 101)
-    return GxEPD_LIGHTGREY;
-  if (gray > 32)
-    return GxEPD_DARKGREY;
-  return GxEPD_BLACK;
+  if (gray < 16)
+    return Color::Black;
+  else if (gray < 32)
+    return Color::Gray01;
+  else if (gray < 48)
+    return Color::Gray02;
+  else if (gray < 64)
+    return Color::Gray03;
+  else if (gray < 80)
+    return Color::Gray04;
+  else if (gray < 96)
+    return Color::Gray05;
+  else if (gray < 112)
+    return Color::Gray06;
+  else if (gray < 128)
+    return Color::Gray07;
+  else if (gray < 144)
+    return Color::Gray08;
+  else if (gray < 160)
+    return Color::Gray09;
+  else if (gray < 176)
+    return Color::Gray10;
+  else if (gray < 192)
+    return Color::Gray11;
+  else if (gray < 208)
+    return Color::Gray12;
+  else if (gray < 224)
+    return Color::Gray13;
+  else if (gray < 240)
+    return Color::Gray14;
+  else
+    return Color::White;
 
-#else
-  uint8_t gray = (r * 77 + g * 150 + b * 29) >> 8;
-  return (gray <= 160) ? GxEPD_BLACK : GxEPD_WHITE;
-#endif
 }
 
 // Callback: Draw pixel from PNG decoder
-static void pngleOnDraw(pngle_t *pngle, uint32_t x, uint32_t y, uint32_t w, uint32_t h, const uint8_t rgba[4])
+static void pngleOnDraw(pngle_t *pngle, unsigned int x, unsigned int y, unsigned int w, unsigned int h, const uint8_t rgba[4])
 {
   if ((x >= Display::getWidth()) || (y >= Display::getHeight()))
   {
@@ -322,7 +288,7 @@ static void pngleOnDraw(pngle_t *pngle, uint32_t x, uint32_t y, uint32_t w, uint
     return;
   }
 
-  uint16_t color = rgbaToDisplayColor(rgba[0], rgba[1], rgba[2], rgba[3]);
+  Color color = rgbaToDisplayColor(rgba[0], rgba[1], rgba[2], rgba[3]);
   Display::drawPixel(x, y, color);
 
   // Yield periodically to prevent watchdog timeout
@@ -413,7 +379,7 @@ static bool processPNG(HttpClient &http, uint32_t startTime, uint8_t *buffer, ui
 #if defined(STREAMING_ENABLED) && defined(STREAMING_DIRECT_MODE)
 
 // Direct streaming PNG callback
-static void pngleOnDrawDirect(pngle_t *pngle, uint32_t x, uint32_t y, uint32_t w, uint32_t h, const uint8_t rgba[4])
+static void pngleOnDrawDirect(pngle_t *pngle, unsigned int x, unsigned int y, unsigned int w, unsigned int h, const uint8_t rgba[4])
 {
   if (!g_directCtx.initialized)
     return;
@@ -421,7 +387,7 @@ static void pngleOnDrawDirect(pngle_t *pngle, uint32_t x, uint32_t y, uint32_t w
   if (x >= g_directCtx.displayWidth || y >= g_directCtx.displayHeight)
     return;
 
-  uint16_t color = rgbaToDisplayColor(rgba[0], rgba[1], rgba[2], rgba[3]);
+  Color color = rgbaToDisplayColor(rgba[0], rgba[1], rgba[2], rgba[3]);
   directStreamPixel(x, y, color);
 
   // Yield periodically
@@ -543,8 +509,8 @@ static bool processRLEDirect(HttpClient &http, uint32_t startTime, ImageFormat f
   uint16_t h = g_directCtx.displayHeight;
   uint32_t totalPixels = w * h;
 
-  uint16_t color2 = getSecondColor();
-  uint16_t color3 = getThirdColor();
+  Color color2 = getSecondColor();
+  Color color3 = getThirdColor();
 
   uint16_t row = 0;
   uint16_t col = 0;
@@ -610,7 +576,7 @@ static bool processRLEDirect(HttpClient &http, uint32_t startTime, ImageFormat f
       }
     }
 
-    uint16_t color = mapColorValue(pixelColor, color2, color3);
+    Color color = mapColorValue(pixelColor, color2, color3);
 
     // Draw pixels using direct streaming
     for (uint8_t i = 0; i < count && g_directCtx.pixelsProcessed < totalPixels; i++)
@@ -652,8 +618,8 @@ static bool processRLE(HttpClient &http, uint32_t startTime, ImageFormat format,
   uint16_t h = Display::getResolutionY();
   uint32_t totalPixels = w * h;
 
-  uint16_t color2 = getSecondColor();
-  uint16_t color3 = getThirdColor();
+  Color color2 = getSecondColor();
+  Color color3 = getThirdColor();
 
   uint16_t row = 0;
   uint16_t col = 0;
@@ -731,7 +697,7 @@ static bool processRLE(HttpClient &http, uint32_t startTime, ImageFormat format,
       }
     }
 
-    uint16_t color = mapColorValue(pixelColor, color2, color3);
+    Color color = mapColorValue(pixelColor, color2, color3);
 
     // Draw pixels
     for (uint8_t i = 0; i < count && pixelsProcessed < totalPixels; i++)

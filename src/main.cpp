@@ -106,9 +106,9 @@ void downloadAndDisplayImage(HttpClient &httpClient)
     Display::initDirectStreaming(usePartialRefresh);
 #endif
 
-    // Display rotation?
-    if (httpClient.hasRotation())
-      Display::setRotation(2);
+    // // Display rotation?
+    // if (httpClient.hasRotation())
+    //   Display::setRotation(2);
 
     // Check if image data is already available (from checkForUpdate with keepConnectionOpen)
     // If not, try to start a new download (shouldn't happen in normal flow)
@@ -163,9 +163,9 @@ void downloadAndDisplayImage(HttpClient &httpClient)
     else
       Display::setToFullWindow();
 
-    // Display rotation?
-    if (httpClient.hasRotation())
-      Display::setRotation(2);
+    // // Display rotation?
+    // if (httpClient.hasRotation())
+    //   Display::setRotation(2);
 
     // Get that lovely image and put it on your gorgeous grayscale ePaper screen!
     // If you can't use whole display at once, there will be multiple pages and therefore
@@ -173,18 +173,16 @@ void downloadAndDisplayImage(HttpClient &httpClient)
     Display::setToFirstPage();
 
     // Store number of pages needed to fill the buffer of the display to turn off the WiFi after last page is loaded
-    uint16_t pagesToLoad = Display::getNumberOfPages();
+    // uint16_t pagesToLoad = Display::getNumberOfPages();
 
-    do
-    {
       // For paged displays, download image once per page
-      if (!httpClient.startImageDownload())
-        break;
+      // if (!httpClient.startImageDownload())
+      //   break;
       ImageHandler::readImageData(httpClient);
 
       // turn of WiFi if no more pages left
-      if (--pagesToLoad == 0)
-      {
+      // if (--pagesToLoad == 0)
+      // {
         httpClient.stop();
         // End download timing before WiFi turns off
         StateManager::endDownloadTimer();
@@ -195,8 +193,7 @@ void downloadAndDisplayImage(HttpClient &httpClient)
 
         // Start refresh timing after WiFi is off
         StateManager::startRefreshTimer();
-      }
-    } while (Display::setToNextPage());
+      // }
 
     // Disable light sleep callback after refresh completes
     Display::enableLightSleepDuringRefresh(false);

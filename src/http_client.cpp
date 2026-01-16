@@ -45,7 +45,7 @@ void HttpClient::buildJsonPayload()
   m_jsonDoc["fwVersion"] = firmware;
   m_jsonDoc["apiVersion"] = firmware;  // tells server what are firmware capabilities, same as fwVersion in our case
   m_jsonDoc["buildDate"] = BUILD_DATE; // got from scripts/set_build_date.py before build
-  m_jsonDoc["board"] = Board::getBoardType();
+  m_jsonDoc["board"] = "TTGO_T5_47_v23";
 
   // System info
   JsonObject system = m_jsonDoc["system"].to<JsonObject>();
@@ -66,10 +66,10 @@ void HttpClient::buildJsonPayload()
 
   // Display info
   JsonObject display = m_jsonDoc["display"].to<JsonObject>();
-  display["type"] = Display::getDisplayType();
+  display["type"] = "ED047TC1"; // Fixed display type for TTGO T5 4.7" v2.3
   display["width"] = Display::getResolutionX();
   display["height"] = Display::getResolutionY();
-  display["colorType"] = Display::getColorType();
+  display["colorType"] = "GRAY16"; // Fixed color type for this display
   // Add last refresh duration if available from previous run (in milliseconds)
   if (StateManager::getLastRefreshDuration() > 0)
     display["lastRefreshDuration"] = StateManager::getLastRefreshDuration();
