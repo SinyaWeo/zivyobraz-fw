@@ -6,7 +6,7 @@
 
 #include "utils.h"
 
-// Enum for 16 levels of gray (0 = black, 15 = white)
+// Enum for 16 levels of gray
 enum class Color : uint16_t {
   Black = 0,
   Gray01 = 15,

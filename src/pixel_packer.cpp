@@ -36,12 +36,12 @@ void packPixel4G(uint8_t *buffer, uint16_t x, uint8_t grey)
   uint16_t byteIndex = x / 2;
   uint8_t pixelInByte = x % 2;
 
-  // Convert 8-bit grey to 2-bit value (0-3)
-  uint8_t value = grey >> 4; // Top 2 bits
+  // Convert 8-bit grey to 4-bit value (0-15)
+  uint8_t value = grey >> 4; // Top 4 bits
 
   // Clear existing bits and set new value
-  // Pixel order: pixel 0 in bits 7-6, pixel 1 in bits 5-4, etc.
-  uint8_t shift = (1 - pixelInByte) * 2;
+  // Pixel order: pixel 0 in bits 7-4, pixel 1 in bits 3-0, etc.
+  uint8_t shift = (1 - pixelInByte) * 4;
   buffer[byteIndex] = (buffer[byteIndex] & ~(0x0F << shift)) | (value << shift);
 }
 

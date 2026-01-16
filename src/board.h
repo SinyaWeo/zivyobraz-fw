@@ -7,7 +7,7 @@
 
 #define EXT_BUTTON 21
 #define vBatPin 14
-#define BOARD_MAX_PAGE_BUFFER_SIZE EPD_WIDTH / 2 * EPD_HEIGHT
+#define BOARD_MAX_PAGE_BUFFER_SIZE (48 * 1024)
 
 enum class ResetReason : uint8_t
 {

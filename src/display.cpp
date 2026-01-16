@@ -295,20 +295,23 @@ void writeRowsDirect(uint16_t yStart, uint16_t rowCount, const uint8_t *blackDat
       Logger::log<Logger::Level::DEBUG, Logger::Topic::DISP>(
         "Direct streaming: Converted {} rows of grayscale to BW for partial refresh\n", rowCount);
       PixelPacker::convertGrayscaleToBW(blackData, bwConversionBuffer.data, DISPLAY_RESOLUTION_X, rowCount);
-      epd_draw_grayscale_image(setToPartialWindow(0, yStart, DISPLAY_RESOLUTION_X, rowCount), bwConversionBuffer.data);
+      Rect_t area = setToPartialWindow(0, yStart, DISPLAY_RESOLUTION_X, rowCount);
+      epd_draw_grayscale_image(area, bwConversionBuffer.data);
     }
     else
     {
       Logger::log<Logger::Level::ERROR, Logger::Topic::DISP>("BW conversion buffer not available or too small\n");
       // Fallback: draw original grayscale data (will flash)
-      epd_draw_grayscale_image(setToPartialWindow(0, yStart, DISPLAY_RESOLUTION_X, rowCount), (uint8_t *)blackData);
+      Rect_t area = setToPartialWindow(0, yStart, DISPLAY_RESOLUTION_X, rowCount);
+      epd_draw_grayscale_image(area, (uint8_t *)blackData);
     }
   }
   else
   {
     Logger::log<Logger::Level::DEBUG, Logger::Topic::DISP>(
       "Direct streaming: Wrote {} rows of grayscale data for full refresh\n", rowCount);
-    epd_draw_grayscale_image(setToPartialWindow(0, yStart, DISPLAY_RESOLUTION_X, rowCount), (uint8_t *)blackData);
+    Rect_t area = setToPartialWindow(0, yStart, DISPLAY_RESOLUTION_X, rowCount);
+    epd_draw_grayscale_image(area, (uint8_t *)blackData);
   }
 }
 

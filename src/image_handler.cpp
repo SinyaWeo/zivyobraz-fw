@@ -71,12 +71,12 @@ static void printReadError(uint32_t bytesRead)
 
 static Color getSecondColor()
 {
-  return Color::Gray05;
+  return Color::Gray06;
 }
   
 static Color getThirdColor()
 {
-  return Color::Gray10;
+  return Color::Gray12;
 }
 
 static Color mapColorValue(uint8_t pixelColor, Color color2, Color color3)
@@ -92,11 +92,11 @@ static Color mapColorValue(uint8_t pixelColor, Color color2, Color color3)
     case 0x3:
       return color3;
     case 0x4:
-      return Color::Gray03;
+      return Color::Gray08;
     case 0x5:
-      return Color::Gray12;
+      return Color::Gray03;
     case 0x6:
-      return Color::Gray06;
+      return Color::Gray10;
     default:
       return Color::White;
   }
