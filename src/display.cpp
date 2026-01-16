@@ -132,8 +132,8 @@ uint16_t getHeight(){
 void powerOnAndInit()
 {
   init();
-  epd_clear();
   Board::setEPaperPowerOn(true);
+  epd_clear();
   delay(500);
 
 }
@@ -277,6 +277,11 @@ void initDirectStreaming(bool partialRefresh, uint16_t maxRowCount)
 
 void writeRowsDirect(uint16_t yStart, uint16_t rowCount, const uint8_t *blackData, const uint8_t *colorData)
 {
+
+  Logger::log<Logger::Level::DEBUG, Logger::Topic::DISP>(
+    "Direct streaming: Writing {} rows starting at y={}\n", rowCount, yStart);
+    Logger::log<Logger::Level::DEBUG, Logger::Topic::DISP>(
+    "Direct streaming: blackData ptr={}, colorData ptr={}\n", (unsigned long)blackData, (unsigned long)colorData);
   if (!blackData || rowCount == 0)
     return;
 
@@ -303,7 +308,7 @@ void writeRowsDirect(uint16_t yStart, uint16_t rowCount, const uint8_t *blackDat
   {
     Logger::log<Logger::Level::DEBUG, Logger::Topic::DISP>(
       "Direct streaming: Wrote {} rows of grayscale data for full refresh\n", rowCount);
-    epd_draw_grayscale_image(setToFullWindow(), (uint8_t *)blackData);
+    epd_draw_grayscale_image(setToPartialWindow(0, yStart, DISPLAY_RESOLUTION_X, rowCount), (uint8_t *)blackData);
   }
 }
 
@@ -312,12 +317,12 @@ void finishDirectStreaming()
   if (directStreamingPartialRefresh)
   {
     Logger::log<Logger::Level::DEBUG, Logger::Topic::DISP>("Finishing direct streaming with PARTIAL refresh\n");
-    // refresh(true);
+    refreshDisplay();
   }
   else
   {
     Logger::log<Logger::Level::DEBUG, Logger::Topic::DISP>("Finishing direct streaming with FULL refresh\n");
-    // refresh(false);
+    refreshDisplay();
   }
 
   bwConversionBuffer.release();
@@ -325,7 +330,11 @@ void finishDirectStreaming()
 
 //FIXME: Remove when epd_driver.h is fully integrated
 void refreshDisplay() {
+  Logger::log<Logger::Level::DEBUG, Logger::Topic::DISP>("Refreshing display...\n");
+  epd_poweron();
   epd_draw_grayscale_image(epd_full_screen(), framebuffer);
+  epd_poweroff();
+  Logger::log<Logger::Level::DEBUG, Logger::Topic::DISP>("Display refresh complete.\n");
 }
 
 void showNoWiFiError(uint64_t sleepSeconds, const String &wikiUrl)

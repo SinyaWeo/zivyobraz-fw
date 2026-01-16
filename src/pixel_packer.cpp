@@ -1,5 +1,7 @@
 #include "pixel_packer.h"
 #include <display.h>
+#include <fcntl.h>
+#include <cstdint>
 
 namespace PixelPacker
 {
@@ -14,72 +16,72 @@ uint8_t getBitsPerPixel()
   return 4; // 4 bits per pixel
 }
 
-void packPixelBW(uint8_t *buffer, uint16_t x, bool isBlack)
-{
-  uint16_t byteIndex = x / 8;
-  uint8_t bitPosition = 7 - (x % 8); // MSB first
+// void packPixelBW(uint8_t *buffer, uint16_t x, bool isBlack)
+// {
+//   uint16_t byteIndex = x / 8;
+//   uint8_t bitPosition = 7 - (x % 8); // MSB first
 
-  if (isBlack)
-  {
-    buffer[byteIndex] &= ~(1 << bitPosition); // Clear bit for black
-  }
-  else
-  {
-    buffer[byteIndex] |= (1 << bitPosition); // Set bit for white
-  }
-}
+//   if (isBlack)
+//   {
+//     buffer[byteIndex] &= ~(1 << bitPosition); // Clear bit for black
+//   }
+//   else
+//   {
+//     buffer[byteIndex] |= (1 << bitPosition); // Set bit for white
+//   }
+// }
 
 void packPixel4G(uint8_t *buffer, uint16_t x, uint8_t grey)
 {
-  uint16_t byteIndex = x / 4;
-  uint8_t pixelInByte = x % 4;
+  uint16_t byteIndex = x / 2;
+  uint8_t pixelInByte = x % 2;
 
   // Convert 8-bit grey to 2-bit value (0-3)
-  uint8_t value = grey >> 6; // Top 2 bits
+  uint8_t value = grey >> 4; // Top 2 bits
 
   // Clear existing bits and set new value
   // Pixel order: pixel 0 in bits 7-6, pixel 1 in bits 5-4, etc.
-  uint8_t shift = (3 - pixelInByte) * 2;
-  buffer[byteIndex] = (buffer[byteIndex] & ~(0x03 << shift)) | (value << shift);
+  uint8_t shift = (1 - pixelInByte) * 2;
+  buffer[byteIndex] = (buffer[byteIndex] & ~(0x0F << shift)) | (value << shift);
 }
 
-void packPixel3C(uint8_t *blackBuffer, uint8_t *colorBuffer, uint16_t x, uint16_t color)
-{
-  uint16_t byteIndex = x / 8;
-  uint8_t bitPosition = 7 - (x % 8); // MSB first
+// void packPixel3C(uint8_t *blackBuffer, uint8_t *colorBuffer, uint16_t x, uint16_t color)
+// {
+//   uint16_t byteIndex = x / 8;
+//   uint8_t bitPosition = 7 - (x % 8); // MSB first
 
-  // 3C encoding:
-  // WHITE:  black=1, color=1 (both bits set)
-  // BLACK:  black=0, color=1 (black bit cleared)
-  // RED/YELLOW: black=1, color=0 (color bit cleared)
+//   // 3C encoding:
+//   // WHITE:  black=1, color=1 (both bits set)
+//   // BLACK:  black=0, color=1 (black bit cleared)
+//   // RED/YELLOW: black=1, color=0 (color bit cleared)
 
-  switch (color)
-  {
-    case static_cast<uint16_t>(GxEPDColor::BLACK):
-      blackBuffer[byteIndex] &= ~(1 << bitPosition); // Clear black bit
-      colorBuffer[byteIndex] |= (1 << bitPosition);  // Set color bit
-      break;
-    case static_cast<uint16_t>(GxEPDColor::RED):
-    case static_cast<uint16_t>(GxEPDColor::YELLOW):
-      blackBuffer[byteIndex] |= (1 << bitPosition);  // Set black bit
-      colorBuffer[byteIndex] &= ~(1 << bitPosition); // Clear color bit
-      break;
-    default:                                        // WHITE and others
-      blackBuffer[byteIndex] |= (1 << bitPosition); // Set black bit
-      colorBuffer[byteIndex] |= (1 << bitPosition); // Set color bit
-      break;
-  }
-}
+//   switch (color)
+//   {
+//     case static_cast<uint16_t>(GxEPDColor::BLACK):
+//       blackBuffer[byteIndex] &= ~(1 << bitPosition); // Clear black bit
+//       colorBuffer[byteIndex] |= (1 << bitPosition);  // Set color bit
+//       break;
+//     case static_cast<uint16_t>(GxEPDColor::RED):
+//     case static_cast<uint16_t>(GxEPDColor::YELLOW):
+//       blackBuffer[byteIndex] |= (1 << bitPosition);  // Set black bit
+//       colorBuffer[byteIndex] &= ~(1 << bitPosition); // Clear color bit
+//       break;
+//     default:                                        // WHITE and others
+//       blackBuffer[byteIndex] |= (1 << bitPosition); // Set black bit
+//       colorBuffer[byteIndex] |= (1 << bitPosition); // Set color bit
+//       break;
+//   }
+// }
 
-void packPixel4C(uint8_t *buffer, uint16_t x, uint8_t color4)
-{
-  uint16_t byteIndex = x / 4;
-  uint8_t pixelInByte = x % 4;
+// void packPixel4C(uint8_t *buffer, uint16_t x, uint8_t color4)
+// {
+//   uint16_t byteIndex = x / 4;
+//   uint8_t pixelInByte = x % 4;
 
-  // Pixel order: pixel 0 in bits 7-6, pixel 1 in bits 5-4, etc. (MSB first)
-  uint8_t shift = (3 - pixelInByte) * 2;
-  buffer[byteIndex] = (buffer[byteIndex] & ~(0x03 << shift)) | ((color4 & 0x03) << shift);
-}
+//   // Pixel order: pixel 0 in bits 7-6, pixel 1 in bits 5-4, etc. (MSB first)
+//   uint8_t shift = (3 - pixelInByte) * 2;
+//   buffer[byteIndex] = (buffer[byteIndex] & ~(0x03 << shift)) | ((color4 & 0x03) << shift);
+// }
 
 void packPixel7C(uint8_t *buffer, uint16_t x, uint8_t color7)
 {
@@ -129,6 +131,29 @@ void convertGrayscaleToBW(const uint8_t *src2bpp, uint8_t *dst1bpp, uint16_t wid
   }
 }
 
+uint8_t gxepdTo7CColor(Color color)
+{
+  // switch (color)
+  // {
+  //   case Color::Black:
+  //     return 0;
+  //   case Color::White:
+  //     return 255;
+  //   case static_cast<uint16_t>(GxEPDColor::GREEN):
+  //     return 126;
+  //   case static_cast<uint16_t>(GxEPDColor::BLUE):
+  //     return 31;
+  //   case static_cast<uint16_t>(GxEPDColor::RED):
+  //     return 31;
+  //   case static_cast<uint16_t>(GxEPDColor::YELLOW):
+  //     return 94;
+  //   case static_cast<uint16_t>(GxEPDColor::ORANGE):
+  //     return 72;
+  //   default:
+  //     return 255; // Default to white
+  // }
+  return static_cast<uint8_t>(color);
+}
 
 uint8_t gxepdToGrey(Color color)
 {

@@ -27,6 +27,7 @@
 #include <epd_driver.h>
 
 #include <pngle.h>
+#include <cstdint>
 
 namespace ImageHandler
 {
@@ -140,6 +141,7 @@ static void flushCompletedRows()
   const uint8_t *blackData = g_directCtx.buffer->getRowData(0);
   const uint8_t *colorData = g_directCtx.buffer->getColorRowData(0);
 
+  // Write rows to display
   Display::writeRowsDirect(g_directCtx.firstRowInBuffer, rowsToFlush, blackData, colorData);
 
   Logger::log<Logger::Level::DEBUG, Logger::Topic::STREAM>("Flushed {} rows starting at y={}\n", rowsToFlush,

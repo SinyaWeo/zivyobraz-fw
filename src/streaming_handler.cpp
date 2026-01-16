@@ -1,4 +1,6 @@
 #include "streaming_handler.h"
+#include <sys/types.h>
+#include <cstdint>
 #include "pixel_packer.h"
 
 #include "board.h"
@@ -356,7 +358,7 @@ void RowStreamBuffer::setPixel(size_t rowIndex, uint16_t x, Color color)
   size_t rowOffset = rowIndex * m_rowSize;
   uint8_t *rowData = m_buffer.data() + rowOffset;
 
-      PixelPacker::packPixel4G(rowData, x, PixelPacker::gxepdToGrey(color));
+      PixelPacker::packPixel4G(rowData, x, PixelPacker::gxepdTo7CColor(color));
 
   incrementRowPixelCount(rowIndex);
 }

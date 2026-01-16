@@ -83,6 +83,7 @@ void downloadAndDisplayImage(HttpClient &httpClient)
   // Enable ePaper power
   Board::setEPaperPowerOn(true);
   delay(500);
+  Display::clear();
 
   // Start tracking download duration
   StateManager::startDownloadTimer();

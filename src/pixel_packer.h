@@ -45,7 +45,7 @@ void packPixel7C(uint8_t *buffer, uint16_t x, uint8_t color7);
 void convertGrayscaleToBW(const uint8_t *src2bpp, uint8_t *dst1bpp, uint16_t width, uint16_t rowCount);
 uint8_t gxepdToGrey(Color color);
 uint8_t gxepdTo4CColor(uint16_t color);
-uint8_t gxepdTo7CColor(uint16_t color);
+uint8_t gxepdTo7CColor(Color color);
 
 void initRowBuffer(uint8_t *buffer, size_t size);
 
