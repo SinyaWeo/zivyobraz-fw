@@ -10,6 +10,12 @@
 
 #include <esp_adc_cal.h>
 #include <soc/adc_channel.h>
+#include <stddef.h>
+
+namespace {
+  void (*_busy_callback)(const void *) = NULL;
+  const void *_busy_callback_parameter = NULL;
+}
 
 namespace Board
 {
@@ -29,8 +35,15 @@ void setEPaperPowerOn(bool on)
     epd_poweroff();
 }
 
+void setBusyCallback(void (*busyCallback)(const void*), const void* busy_callback_parameter)
+{
+  _busy_callback = busyCallback;
+  _busy_callback_parameter = busy_callback_parameter;
+}
+
 void enterDeepSleepMode(uint64_t sleepDuration)
 {
+  esp_sleep_enable_timer_wakeup(sleepDuration * 1000000ULL);
   #if defined(EXT_BUTTON)
   esp_sleep_enable_ext1_wakeup(1ULL << EXT_BUTTON, ESP_EXT1_WAKEUP_ANY_LOW);
   #endif
@@ -154,4 +167,9 @@ const char *getResetReasonString()
       return "unknown";
   }
 }
+class Board {
+  protected:
+    void (*_busy_callback)(const void*); 
+    const void* _busy_callback_parameter;
+};
 } // namespace Board
