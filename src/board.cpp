@@ -35,10 +35,9 @@ void setEPaperPowerOn(bool on)
     epd_poweroff();
 }
 
-void setBusyCallback(void (*busyCallback)(const void*), const void* busy_callback_parameter)
+void setBusyCallback(void (*busyCallback)(const void*))
 {
   _busy_callback = busyCallback;
-  _busy_callback_parameter = busy_callback_parameter;
 }
 
 void enterDeepSleepMode(uint64_t sleepDuration)

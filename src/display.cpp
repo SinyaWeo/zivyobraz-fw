@@ -233,11 +233,11 @@ void enableLightSleepDuringRefresh(bool enable)
   if (enable)
   {
     Logger::log<Logger::Level::DEBUG, Logger::Topic::DISP>("Enabling light sleep during display refresh\n");
-    // display.epd2.setBusyCallback(busyCallbackLightSleep, nullptr);
+    Board::setBusyCallback(busyCallbackLightSleep);
   }
   else
   {
-    // display.epd2.setBusyCallback(nullptr, nullptr);
+    Board::setBusyCallback(nullptr);
   }
 }
 

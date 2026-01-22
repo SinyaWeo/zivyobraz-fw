@@ -28,7 +28,7 @@ namespace Board
 {
 void setupHW();
 void setEPaperPowerOn(bool on);
-void setBusyCallback(void (*busyCallback)(const void*), const void* busy_callback_parameter = 0);
+void setBusyCallback(void (*busyCallback)(const void*));
 void enterDeepSleepMode(uint64_t sleepDuration);
 
 float getBatteryVoltage();
